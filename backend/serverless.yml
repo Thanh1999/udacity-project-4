@@ -31,16 +31,6 @@ provider:
     # Enable API Gateway logs
     restApi: true
 
-  iam:
-    role:
-      statements:
-        - Effect: Allow
-          Action:
-            - xray:PutTelemetryRecords
-            - xray:PutTraceSegments
-          Resource: "*"
-
-
 functions:
 
   Auth:
@@ -61,6 +51,12 @@ functions:
         Action:
           - dynamodb:Query
         Resource: arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOS_TABLE}/index/${self:provider.environment.TODOS_CREATED_AT_INDEX}
+      - Effect: Allow
+        Action:
+          - xray:PutTelemetryRecords
+          - xray:PutTraceSegments
+        Resource: "*"
+        
 
   # TODO: Configure this function - 
   # Provide iamRoleStatements property. Decide the Actions and AWS Resource. 
@@ -82,6 +78,11 @@ functions:
         Action:
           - dynamodb:PutItem
         Resource: !GetAtt TodosTable.Arn
+      - Effect: Allow
+        Action:
+          - xray:PutTelemetryRecords
+          - xray:PutTraceSegments
+        Resource: "*"
 
   # TODO: Configure this function
   # Provide property for setting up CORS, Authorizer, iamRoleStatements, and request schemas
@@ -102,6 +103,11 @@ functions:
           - dynamodb:GetItem
           - dynamodb:UpdateItem
         Resource: !GetAtt TodosTable.Arn
+      - Effect: Allow
+        Action:
+          - xray:PutTelemetryRecords
+          - xray:PutTraceSegments
+        Resource: "*"
 
   # TODO: Configure this function
   # Provide property for setting up CORS, Authorizer, iamRoleStatements
@@ -119,7 +125,11 @@ functions:
           - dynamodb:GetItem
           - dynamodb:DeleteItem
         Resource: !GetAtt TodosTable.Arn
-
+      - Effect: Allow
+        Action:
+          - xray:PutTelemetryRecords
+          - xray:PutTraceSegments
+        Resource: "*"
   # TODO: Configure this function
   # Provide property for setting up CORS, Authorizer, iamRoleStatements
   GenerateUploadUrl:
@@ -141,6 +151,11 @@ functions:
           - s3:PutObject
           - s3:GetObject
         Resource: arn:aws:s3:::${self:provider.environment.ATTACHMENT_S3_BUCKET}/*
+      - Effect: Allow
+        Action:
+          - xray:PutTelemetryRecords
+          - xray:PutTraceSegments
+        Resource: "*"
 resources:
   Resources:
     # Add necessary AWS resources. You will need at least the following AWS resources
