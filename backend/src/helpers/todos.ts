@@ -6,15 +6,22 @@ import { UpdateTodoRequest } from '../requests/UpdateTodoRequest'
 import { createLogger } from '../utils/logger'
 import * as uuid from 'uuid'
 import * as createError from 'http-errors'
+import { TodoList } from '../models/TodoList';
+import { Key } from 'aws-sdk/clients/dynamodb';
 
 // TODO: Implement businessLogic
 const logger = createLogger('todos');
 const todosAcess = new TodosAccess();
 const attachmentUtils = new AttachmentUtils();
 
-export async function getTodosForUser(userId: string): Promise<TodoItem[]> {
+export async function getTodosForUser(userId: string, nextKey: Key, limit: number): Promise<TodoList> {
     logger.info('Process business for getTodosForUser');
-    return todosAcess.getTodos(userId);
+    const totalCount = await todosAcess.getTotalCount(userId);
+    const todoList = await todosAcess.getTodos(userId, nextKey, limit);
+    return {
+        ...todoList,
+        totalCount
+    }
 }
 
 export async function deleteTodo(todoId: string, userId: string) {
@@ -22,6 +29,17 @@ export async function deleteTodo(todoId: string, userId: string) {
     const todoItem = await todosAcess.getTodoById(todoId, userId);
     if (!todoItem) {
         throw createError(404, 'TODO item not found');
+    }
+
+    if (todoItem.attachmentUrl) {
+        try{
+        const url = todoItem.attachmentUrl;
+        const imageId = url.slice(url.lastIndexOf('/') + 1);
+        await attachmentUtils.deleteObject(imageId).promise();
+        logger.info('Delete image for todoid: ', todoId);
+        }catch(error){
+            logger.error('Cant delete image with error: ', error);
+        }
     }
     return todosAcess.deleteTodo(todoId, userId);
 }

@@ -27,13 +27,19 @@ interface TodosState {
   todos: Todo[]
   newTodoName: string
   loadingTodos: boolean
+  nextKey: string
+  totalCount: number
 }
+
+const LIMIT_ITEMS = 3
 
 export class Todos extends React.PureComponent<TodosProps, TodosState> {
   state: TodosState = {
     todos: [],
     newTodoName: '',
-    loadingTodos: true
+    loadingTodos: true,
+    nextKey: '',
+    totalCount: 0,
   }
 
   handleNameChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -89,16 +95,33 @@ export class Todos extends React.PureComponent<TodosProps, TodosState> {
     }
   }
 
-  async componentDidMount() {
+  async loadTodoData() {
     try {
-      const todos = await getTodos(this.props.auth.getIdToken())
+      if (!this.state.loadingTodos) {
+        this.setState({
+          loadingTodos: true
+        })
+      }
+      const currentTodo = this.state.todos;
+      const todoData = await getTodos(this.props.auth.getIdToken(), this.state.nextKey ?? null, LIMIT_ITEMS);
+      currentTodo.push(...todoData?.items);
       this.setState({
-        todos,
-        loadingTodos: false
+        todos: currentTodo,
+        loadingTodos: false,
+        nextKey: todoData?.nextKey,
+        totalCount: todoData?.totalCount
       })
     } catch (e) {
       alert(`Failed to fetch todos: ${(e as Error).message}`)
     }
+  }
+
+  onLoadMore() {
+    this.loadTodoData();
+  }
+
+  componentDidMount() {
+    this.loadTodoData();
   }
 
   render() {
@@ -158,51 +181,64 @@ export class Todos extends React.PureComponent<TodosProps, TodosState> {
 
   renderTodosList() {
     return (
-      <Grid padded>
-        {this.state.todos.map((todo, pos) => {
-          return (
-            <Grid.Row key={todo.todoId}>
-              <Grid.Column width={1} verticalAlign="middle">
-                <Checkbox
-                  onChange={() => this.onTodoCheck(pos)}
-                  checked={todo.done}
-                />
-              </Grid.Column>
-              <Grid.Column width={10} verticalAlign="middle">
-                {todo.name}
-              </Grid.Column>
-              <Grid.Column width={3} floated="right">
-                {todo.dueDate}
-              </Grid.Column>
-              <Grid.Column width={1} floated="right">
-                <Button
-                  icon
-                  color="blue"
-                  onClick={() => this.onEditButtonClick(todo.todoId)}
-                >
-                  <Icon name="pencil" />
-                </Button>
-              </Grid.Column>
-              <Grid.Column width={1} floated="right">
-                <Button
-                  icon
-                  color="red"
-                  onClick={() => this.onTodoDelete(todo.todoId)}
-                >
-                  <Icon name="delete" />
-                </Button>
-              </Grid.Column>
-              {todo.attachmentUrl && (
-                <Image src={todo.attachmentUrl} size="small" wrapped />
-              )}
-              <Grid.Column width={16}>
-                <Divider />
-              </Grid.Column>
-            </Grid.Row>
-          )
-        })}
-      </Grid>
+      <>
+        <Grid padded>
+          {this.state.todos.map((todo, pos) => {
+            return (
+              <Grid.Row key={todo.todoId}>
+                <Grid.Column width={1} verticalAlign="middle">
+                  <Checkbox
+                    onChange={() => this.onTodoCheck(pos)}
+                    checked={todo.done}
+                  />
+                </Grid.Column>
+                <Grid.Column width={10} verticalAlign="middle">
+                  {todo.name}
+                </Grid.Column>
+                <Grid.Column width={3} floated="right">
+                  {todo.dueDate}
+                </Grid.Column>
+                <Grid.Column width={1} floated="right">
+                  <Button
+                    icon
+                    color="blue"
+                    onClick={() => this.onEditButtonClick(todo.todoId)}
+                  >
+                    <Icon name="pencil" />
+                  </Button>
+                </Grid.Column>
+                <Grid.Column width={1} floated="right">
+                  <Button
+                    icon
+                    color="red"
+                    onClick={() => this.onTodoDelete(todo.todoId)}
+                  >
+                    <Icon name="delete" />
+                  </Button>
+                </Grid.Column>
+                {todo.attachmentUrl && (
+                  <Image src={todo.attachmentUrl} size="small" wrapped />
+                )}
+                <Grid.Column width={16}>
+                  <Divider />
+                </Grid.Column>
+              </Grid.Row>
+            )
+          })}
+        </Grid>
+        {this.renderLoadMoreButton()}
+      </>
     )
+  }
+
+  renderLoadMoreButton() {
+    return this.state.nextKey && (this.state.todos.length < this.state.totalCount) && <Button
+      color="orange"
+
+      onClick={() => this.onLoadMore()}
+    >
+      Load More
+    </Button>
   }
 
   calculateDueDate(): string {

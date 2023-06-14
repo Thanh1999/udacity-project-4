@@ -1,8 +1,9 @@
 import * as AWS from 'aws-sdk'
-import { DocumentClient } from 'aws-sdk/clients/dynamodb'
+import { DocumentClient, Key } from 'aws-sdk/clients/dynamodb'
 import { createLogger } from '../utils/logger'
 import { TodoItem } from '../models/TodoItem'
 import { TodoUpdate } from '../models/TodoUpdate';
+import { TodoList } from '../models/TodoList';
 const AWSXRay = require('aws-xray-sdk')
 
 const XAWS = AWSXRay.captureAWS(AWS)
@@ -17,8 +18,8 @@ export class TodosAccess {
         private readonly userIdIndex = process.env.TODOS_CREATED_AT_INDEX
     ) { }
 
-    async getTodos(userId: string): Promise<TodoItem[]> {
-        logger.info(`Get all todos for userId ${userId}`);
+    async getTodos(userId: string, nextKey: Key, limit: number): Promise<TodoList> {
+        logger.info(`Get todos for userId ${userId}`);
         const result = await this.docClient
             .query({
                 TableName: this.todosTable,
@@ -26,11 +27,33 @@ export class TodosAccess {
                 KeyConditionExpression: 'userId = :userId',
                 ExpressionAttributeValues: {
                     ':userId': userId
-                }
+                },
+                Limit: limit,
+                ExclusiveStartKey: nextKey
             })
             .promise()
 
-        return result.Items as TodoItem[]
+        return {
+            items: result.Items as TodoItem[],
+            nextKey: result.LastEvaluatedKey ? encodeURIComponent(JSON.stringify(result.LastEvaluatedKey)) : null,
+        }
+    }
+
+    async getTotalCount(userId: string): Promise<number> {
+        logger.info(`Get total todos count userId ${userId}`);
+        const result = await this.docClient
+            .query({
+                TableName: this.todosTable,
+                IndexName: this.userIdIndex,
+                KeyConditionExpression: 'userId = :userId',
+                ExpressionAttributeValues: {
+                    ':userId': userId
+                },
+                Select: 'COUNT'
+            })
+            .promise()
+
+        return result.Count;
     }
 
     async getTodoById(todoId: string, userId: string): Promise<TodoItem> {

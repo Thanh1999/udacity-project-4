@@ -12,7 +12,7 @@ const s3 = new XAWS.S3({
 })
 
 export class AttachmentUtils {
-    
+
     getAttachmentUrl(imageId: string): string {
         return `https://${bucketName}.s3.amazonaws.com/${imageId}`;
     }
@@ -24,4 +24,13 @@ export class AttachmentUtils {
             Expires: parseInt(urlExpiration)
         })
     }
+
+    deleteObject(objectKey: string) {
+        const params = {
+            Bucket: bucketName,
+            Key: objectKey
+        };
+
+        return s3.deleteObject(params);
+    };
 }

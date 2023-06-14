@@ -130,6 +130,11 @@ functions:
           - xray:PutTelemetryRecords
           - xray:PutTraceSegments
         Resource: "*"
+      - Effect: Allow
+        Action:
+          - s3:GetObject
+          - s3:DeleteObject
+        Resource: arn:aws:s3:::${self:provider.environment.ATTACHMENT_S3_BUCKET}/*
   # TODO: Configure this function
   # Provide property for setting up CORS, Authorizer, iamRoleStatements
   GenerateUploadUrl:
